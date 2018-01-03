@@ -1,0 +1,73 @@
+#!/bin/bash
+
+source "/opt/restic-cli/restic.conf"
+
+DIR="/opt/restic-cli/"
+BIN_DIR="${DIR}bin/"
+BIN_NAME="restic"
+BIN="${BIN_DIR}${BIN_NAME}"
+VERSION="${BIN_DIR}VERSION"
+
+main () {
+
+    if [ "$1" = "update" ]; then
+        update
+    elif [ "$1" = "init-repo" ]; then
+        init-repo
+    elif [ "$1" = "command" ]; then
+        shift
+        $BIN $@
+    else
+        about
+    fi
+
+}
+
+init-repo () {
+    echo "Initializing repository..."
+    $BIN init
+    echo "...Done"
+}
+
+init-host () {
+    echo "Initializing host..."
+
+    echo "...Done"
+}
+
+update () {
+    echo -n "Checking for restic updates..."
+    ARCHITECTURE="linux_amd64"
+
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/restic/restic/releases | grep -E "^    \"name\":" | grep -v "rc" | grep -ohE "[0-9]\.([0-9][\.]?)+" | head -n 1)
+
+    if [ -e $VERSION ]; then
+        CURRENT_VERSION=$(cat $VERSION)
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+            echo "current version ($CURRENT_VERSION) is already latest version ($LATEST_VERSION)"
+            return
+        fi
+    fi
+
+    echo -n "found new version ($LATEST_VERSION), installing..."
+    RESTIC_URL="$(curl -s https://api.github.com/repos/restic/restic/releases | grep "browser_download_url" | grep "linux_amd64" | head -n 1 | cut -d '"' -f 4)"
+
+    # Moving old installation out of the way
+    if [ -e "${BIN_DIR}${BIN_NAME}" ]; then
+        mv "${BIN_DIR}${BIN_NAME}" "${BIN_DIR}${BIN_NAME}.old"
+    fi
+
+    # Getting latest version
+    wget $RESTIC_URL -O "${BIN_DIR}${BIN_NAME}.bz2" > /dev/null 2>&1
+    bzip2 -cd "${BIN_DIR}${BIN_NAME}.bz2" > "${BIN_DIR}${BIN_NAME}"
+    rm "${BIN_DIR}${BIN_NAME}.bz2"
+    echo "$LATEST_VERSION" > $VERSION
+    chmod +x "${BIN_DIR}${BIN_NAME}"
+    echo "Done"
+}
+
+about () {
+    echo "No argument specified"
+}
+
+main $@
