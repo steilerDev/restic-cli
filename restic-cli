@@ -14,9 +14,13 @@ main () {
         update
     elif [ "$1" = "init-repo" ]; then
         init-repo
+    elif [ "$1" = "init-client" ]; then
+        init-client
     elif [ "$1" = "command" ]; then
         shift
         $BIN $@
+    elif ( [ "$1" = "backup" ] && [ "$#" -eq 2 ] ); then
+        backup $2
     else
         about
     fi
@@ -27,6 +31,13 @@ init-repo () {
     echo "Initializing repository..."
     $BIN init
     echo "...Done"
+}
+
+init-client () {
+    echo "Initializing client..."
+    $BIN key add
+    echo "...Done"
+    echo "In order to automate the backup, please add this password to ${DIR}restic.conf as the RESTIC_PASSWORD environmental variable"
 }
 
 init-host () {
@@ -68,6 +79,117 @@ update () {
 
 about () {
     echo "No argument specified"
+}
+
+# Choses the right backup config and starts it
+# $1: name of backup 
+backup () {
+
+    ############################################################################
+    # Read config
+    ############################################################################
+
+    # Load the correct configuration
+    while read -r name path excludes ; do
+        if [[ $name == \#* ]] ; then
+            # Ignore lines with pound
+            continue
+        elif [ $1 = $name ] ; then
+            # If this is the choosen backup, start backup
+            break
+        else
+            # Clear name, in case it did not match
+            name=""
+        fi
+    done < "${BACKUP_CONFIG}"
+    
+    # If no config was found, exit
+    if [ -z "$name" ] ; then
+        echo "No backup config with name $1 found!"
+        echo
+        help
+    fi
+    
+    ############################################################################
+    # Check if job is already running 
+    ############################################################################
+
+    # Build PID file path for this job
+    THIS_PID="${PID_DIR}${PID_PREFIX}.${name}.pid"
+
+    if [ -e ${THIS_PID} ] ; then
+        if ps -p $(cat $THIS_PID) > /dev/null ; then
+            ## If restic is currently performing a backup you can't start another one
+            echo "Restic is already running"
+            exit
+        else
+            ## If there is a PID file, but no running process delete the pid file
+            rm $THIS_PID
+        fi
+    fi
+
+    ############################################################################
+    # Build duplicati base command 
+    ############################################################################
+
+
+    # 5) Set log settings
+#    THIS_LOG_PATH="${LOG_PATH}${LOG_PREFIX}.${name}.log"
+#    THIS_CLI_LOG_PATH="${LOG_PATH}${LOG_PREFIX}.${name}.cli.log"
+#    savelog -q "${LOG_PATH}${LOG_PREFIX}.${name}.log"
+#    savelog -q "${LOG_PATH}${LOG_PREFIX}.${name}.cli.log"
+#    DUPLICATI_CMD+=" --log-file=\"${THIS_LOG_PATH}\"" 
+
+    ############################################################################
+    # Build duplicati options based on duplicati.conf and backup.conf 
+    ############################################################################
+
+    # This variable will hold the final options added to the call
+    EXCLUDE_OPTIONS=""
+
+    # 1) LOCAL_OPTIONS (read from backup.conf) need to be scanned, correct options need to be included, exclude paths need to be surounded by --exclude="". Everything will be put into FINAL_OPTIONS
+    for EXCLUDE in $excludes ; do
+        echo $EXCLUDE
+        EXCLUDE_OPTIONS+="--exclude=$EXCLUDE "
+    done
+
+    
+    # For debugging purposes
+    echo "Invoking restic: '${BIN} ${EXCLUDE_OPTIONS} & echo \$! > ${THIS_PID}'"
+
+    # Running command
+    ${BIN} ${EXCLUDE_OPTIONS} & echo $! > ${THIS_PID}
+    
+    ############################################################################
+    # Make duplicati quiet/monitor log files
+    ############################################################################
+    
+    # Workaround using gdb and swapping file descriptors
+    # 1) Duplicati's "--quiet-console" does not work at the moment (see https://github.com/duplicati/duplicati/issues/1752 for status)
+    # 2) Adding ">>" through shell scripts results into duplicati interpreting some parts wrong and complaining about non-existing source folders
+    # Currently NOT working (theoretically should work at some point and is much cleaner, therefore I will keep it here):
+    # if [ "$3" = "quiet" ] ; then
+    #     DUPLICATI_ARG="${DUPLICATI_ARG} --quiet-console=true >> ${THIS_CLI_LOG_PATH} 2>&1"
+    # fi
+    #
+    # This is a workaround function, using gdb to move the file descriptor currently pointing at stdout (or similar) to the log file
+    #fdswap $(cat ${THIS_DUPLICATI_PID}) ${THIS_CLI_LOG_PATH}
+
+    # This function will detach and monitor the changes made to the CLI log in order to give a rich status summary (eg. used by duplicati status, duplicatirc)
+    # In case the quiet flag is NOT set, this function will provide the output of the log file to the console
+    #monitor_log ${THIS_CLI_LOG_PATH} $(cat ${THIS_DUPLICATI_PID}) ${name} $3 &
+    
+    ############################################################################
+    # Wait for duplicati to finish, then clean and exit
+    ############################################################################
+    wait $(cat ${THIS_PID}) > /dev/null 2>&1
+    success=$?
+    rm ${THIS_PID}
+    echo "Exit code was $success"
+    echo "Now verifying..."
+    ${BIN} check
+    echo "Exit code is $?"
+
 }
 
 main $@
