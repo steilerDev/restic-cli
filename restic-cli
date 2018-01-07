@@ -64,8 +64,12 @@ update () {
     RESTIC_URL="$(curl -s https://api.github.com/repos/restic/restic/releases | grep "browser_download_url" | grep "linux_amd64" | head -n 1 | cut -d '"' -f 4)"
 
     # Moving old installation out of the way
-    if [ -e "${BIN_DIR}${BIN_NAME}" ]; then
-        mv "${BIN_DIR}${BIN_NAME}" "${BIN_DIR}${BIN_NAME}.old"
+    if [ -d "$BIN_DIR" ] ; then
+        if [ -e "${BIN_DIR}${BIN_NAME}" ]; then
+            mv "${BIN_DIR}${BIN_NAME}" "${BIN_DIR}${BIN_NAME}.old"
+        fi
+    else
+        mkdir "$BIN_DIR"
     fi
 
     # Getting latest version
@@ -128,10 +132,6 @@ backup () {
         fi
     fi
 
-    ############################################################################
-    # Build duplicati base command 
-    ############################################################################
-
 
     # 5) Set log settings
 #    THIS_LOG_PATH="${LOG_PATH}${LOG_PREFIX}.${name}.log"
@@ -141,37 +141,26 @@ backup () {
 #    DUPLICATI_CMD+=" --log-file=\"${THIS_LOG_PATH}\"" 
 
     ############################################################################
-    # Build duplicati options based on duplicati.conf and backup.conf 
+    # Build excludes based on backup.conf 
     ############################################################################
 
     # This variable will hold the final options added to the call
     EXCLUDE_OPTIONS=""
 
-    # 1) LOCAL_OPTIONS (read from backup.conf) need to be scanned, correct options need to be included, exclude paths need to be surounded by --exclude="". Everything will be put into FINAL_OPTIONS
     for EXCLUDE in $excludes ; do
-        echo $EXCLUDE
         EXCLUDE_OPTIONS+="--exclude=$EXCLUDE "
     done
 
     
     # For debugging purposes
-    echo "Invoking restic: '${BIN} ${EXCLUDE_OPTIONS} & echo \$! > ${THIS_PID}'"
+    echo "Invoking restic: '${BIN} backup $path ${EXCLUDE_OPTIONS} & echo \$! > ${THIS_PID}'"
 
     # Running command
-    ${BIN} ${EXCLUDE_OPTIONS} & echo $! > ${THIS_PID}
+    ${BIN} backup $path ${EXCLUDE_OPTIONS} & echo $! > ${THIS_PID}
     
     ############################################################################
     # Make duplicati quiet/monitor log files
     ############################################################################
-    
-    # Workaround using gdb and swapping file descriptors
-    # 1) Duplicati's "--quiet-console" does not work at the moment (see https://github.com/duplicati/duplicati/issues/1752 for status)
-    # 2) Adding ">>" through shell scripts results into duplicati interpreting some parts wrong and complaining about non-existing source folders
-    # Currently NOT working (theoretically should work at some point and is much cleaner, therefore I will keep it here):
-    # if [ "$3" = "quiet" ] ; then
-    #     DUPLICATI_ARG="${DUPLICATI_ARG} --quiet-console=true >> ${THIS_CLI_LOG_PATH} 2>&1"
-    # fi
-    #
     # This is a workaround function, using gdb to move the file descriptor currently pointing at stdout (or similar) to the log file
     #fdswap $(cat ${THIS_DUPLICATI_PID}) ${THIS_CLI_LOG_PATH}
 
@@ -180,7 +169,7 @@ backup () {
     #monitor_log ${THIS_CLI_LOG_PATH} $(cat ${THIS_DUPLICATI_PID}) ${name} $3 &
     
     ############################################################################
-    # Wait for duplicati to finish, then clean and exit
+    # Wait for restic to finish, then clean and exit
     ############################################################################
     wait $(cat ${THIS_PID}) > /dev/null 2>&1
     success=$?
