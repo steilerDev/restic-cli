@@ -2,7 +2,11 @@
 
 #Requires jq 1.4 and bash 4.2
 
-source "/opt/restic-cli/restic.conf"
+RESTIC_CONF="/opt/restic-cli/restic.conf"
+
+if [ -e "$RESTIC_CONF" ]; then
+    source $RESTIC_CONF
+fi
 
 main () {
 
@@ -47,8 +51,6 @@ init () {
         echo "The script path differs from the recommended directory (/opt/restic-cli). Please move the folder, or adjust the first line of this script, in order to reference the correct configuration path (it now is $SCRIPTPATH)"
     fi
 
-    echo "Installing restic first..."
-    update 
 
     if [ -e "$CONF" ]; then
         echo "Warning! A configuration file for restic-cli already exists ($CONF), please rename the file NOW, or it will be overwritten."
@@ -63,7 +65,7 @@ init () {
 
     echo "# General configurations" >> $CONF
     echo "DIR=\"${SCRIPTPATH}\"" >> $CONF
-    echo "BIN_DIR=\"\${DIR}/bin" >> $CONF
+    echo "BIN_DIR=\"\${DIR}/bin\"" >> $CONF
     echo "BIN_NAME=\"restic\"" >> $CONF
     echo "BIN=\"\${BIN_DIR}/\${BIN_NAME}\"" >> $CONF
     echo "VERSION=\"\${BIN_DIR}/VERSION\"" >> $CONF
@@ -79,16 +81,19 @@ init () {
                 echo "Please enter your repository path (e.g.: /tmp/repo/):"
                 read REPO_PATH
                 echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                break
                 ;;
             "SFTP")
                 echo "Please enter your remote repository path (e.g.: sftp:user@host:/tmp/backup):"
                 read REPO_PATH
                 echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                break
                 ;;
             "REST")
                 echo "Please enter your remote repository path (e.g.: rest:https://host:8000/):"
                 read REPO_PATH
                 echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                break
                 ;;
             "Amazon S3")
                 echo "Please enter your remote repository path (e.g.: s3:s3.amazonaws.com/bucket_name):"
@@ -100,6 +105,7 @@ init () {
                 echo "Please enter your secret access key:"
                 read SECRET_ACCESS_KEY
                 echo "export AWS_SECRET_ACCESS_KEY=\"$SECRET_ACCESS_KEY\"" >> $CONF
+                break
                 ;;
             "Minio Server")
                 echo "Please enter your remote repository path (e.g.: s3:http://localhost:9000/restic):"
@@ -111,6 +117,7 @@ init () {
                 echo "Please enter your secret access key:"
                 read SECRET_ACCESS_KEY
                 echo "export AWS_SECRET_ACCESS_KEY=\"$SECRET_ACCESS_KEY\"" >> $CONF
+                break
                 ;;
             "OpenStack Swift")
                 echo "Not implemented here yet"
@@ -125,6 +132,7 @@ init () {
                 echo "Please enter your account key:"
                 read ACCOUNT_KEY
                 echo "export B2_ACCOUNT_KEY=\"$ACCOUNT_KEY\"" >> $CONF
+                break
                 ;;
             "MS Azure Blob Storage")
                 echo "Please enter your remote repository path (e.g.: azure:foo:/):"
@@ -136,6 +144,7 @@ init () {
                 echo "Please enter your account key:"
                 read ACCOUNT_KEY
                 echo "export AZURE_ACCOUNT_KEY=\"$ACCOUNT_KEY\"" >> $CONF
+                break
                 ;;
             "Google Cloud Storage")
                 echo "Please check the permissions of the credentials, in order to use Google Cloud Storage with restic (https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html#google-cloud-storage)"
@@ -148,6 +157,7 @@ init () {
                 echo "Please enter the path of the service account key json file:"
                 read ACCOUNT_KEY
                 echo "export GOOGLE_APPLICATION_CREDENTIALS=\"$ACCOUNT_KEY\"" >> $CONF
+                break
                 ;;
             *) echo "Invalid option!";;
         esac
@@ -157,6 +167,10 @@ init () {
 
     # Loading configuration
     source $CONF
+    
+    # Installing binaries
+    echo "Now installing restic..."
+    update 
 
     # Init repo and/or client
     init-repo
@@ -244,7 +258,7 @@ update () {
 
     LATEST_VERSION=$(curl -s https://api.github.com/repos/restic/restic/releases | grep -E "^    \"name\":" | grep -v "rc" | grep -ohE "[0-9]\.([0-9][\.]?)+" | head -n 1)
 
-    if [ -e $VERSION ]; then
+    if [ -e "$VERSION" ]; then
         CURRENT_VERSION=$(cat $VERSION)
         if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
             echo "current version ($CURRENT_VERSION) is already latest version ($LATEST_VERSION)"
@@ -327,20 +341,23 @@ backup () {
         done
     )
 
-    PATH=$(cat "$DIR/conf/$1/conf" | jq .path | tr -d '"')
+    BACKUP_PATH=$(cat "$DIR/conf/$1/conf" | jq .path | tr -d '"')
     
     # For debugging purposes
-    echo "$(date): Starting restic with '${BIN} backup $PATH ${EXCLUDE_OPTIONS}" >> $LOG_PATH
 
-    # Running command
-    ${BIN} backup $PATH ${EXCLUDE_OPTIONS} >> $LOG_PATH & echo $! > ${THIS_PID}
-    
-    ############################################################################
-    # Wait for restic to finish, then clean and exit
-    ############################################################################
-    wait $(cat ${THIS_PID}) > /dev/null 2>&1
-    success=$?
+    echo $$ > ${THIS_PID}
+
+    echo "$(date): Starting restic with '${BIN} backup $BACKUP_PATH ${EXCLUDE_OPTIONS}" >> $LOG_PATH
+    if [ "$2" = "quiet" ]; then
+        ${BIN} backup $BACKUP_PATH ${EXCLUDE_OPTIONS} >> $LOG_PATH
+        success=$?
+    else
+        ${BIN} backup $BACKUP_PATH ${EXCLUDE_OPTIONS}
+        success=$?
+    fi
+
     rm ${THIS_PID}
+
     if [ "$success" -eq 0 ]; then
         echo "$(date): Backup of $1 was successfull" >> $LOG_PATH
         echo "Backup successfull" > "$DIR/conf/$1/status"
