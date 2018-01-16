@@ -1,0 +1,48 @@
+#!/bin/bash
+
+DIR="/opt/restic-cli"
+
+####
+# This file is intended to be included into the .bashrc file via 'source'
+# This short script checks if the backup is currently running or if there was a
+# backup since the last log on. 
+####
+
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+UNDERLINE='\e[4m'
+STOP_UNDERLINE='\e[0m'
+STOP_COLOR='\033[0m'
+
+echo -e "${BLUE}#################${GREEN} Backup Status ${BLUE}###############################################"
+echo -e "${BLUE}###############################################################################"
+
+find $DIR/conf -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | \
+    while read -r BACKUP_NAME ; do
+        STATUS_FILE="$DIR/conf/$BACKUP_NAME/status"
+        PID_FILE="$DIR/conf/$BACKUP_NAME/pid"
+        STATUS=$(cat $STATUS_FILE)
+
+        # Printing Backup name
+        echo -en "${BLUE}## $(echo -n "             " | cut -c ${#BACKUP_NAME}-)${YELLOW}$(echo ${BACKUP_NAME} | head -c 14) ${BLUE}= "
+        # First printing that the job is running
+        if [ -e $PID_FILE ]; then
+            PID=$(cat $PID_FILE)
+            if ps -p $PID > /dev/null; then
+                echo -e "${GREEN}Running, since $(date -r $PID_FILE)"
+                echo -en "${BLUE}##                  "
+            else
+                rm $PID_FILE
+            fi
+        fi
+        # Check if we already saw the last backup
+        if [[ $STATUS == +* ]]; then
+            STATUS=${STATUS:1}
+            echo $STATUS > $STATUS_FILE
+            echo -e "${GREEN}${UNDERLINE}$STATUS${STOP_UNDERLINE}"
+        else
+            echo -e "${GREEN}$STATUS"
+        fi
+    done
+echo -e "${BLUE}###############################################################################${STOP_COLOR}"

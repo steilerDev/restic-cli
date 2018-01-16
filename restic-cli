@@ -359,10 +359,10 @@ backup () {
 
     if [ "$success" -eq 0 ]; then
         echo "$(date): Backup of $1 was successfull" >> $LOG_PATH
-        echo "#Backup successfull" > "$DIR/conf/$1/status"
+        echo "+Backup successfull ($(date))" > "$DIR/conf/$1/status"
     else
         echo "$(date): Backup of $1 was NOT successfull (Code: $success)" >> $LOG_PATH
-        echo "#Backup NOT successfull" > "$DIR/conf/$1/status"
+        echo "+Backup NOT successfull ($(date))" > "$DIR/conf/$1/status"
     fi
     echo "################################################################################"
     exit $success
