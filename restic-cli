@@ -3,7 +3,7 @@
 #Requires jq 1.4 and bash 4.2
 
 RESTIC_CONF="/opt/restic-cli/conf/restic.conf"
-RESTIC_INIT="/opt/helper/init"
+RESTIC_INIT="/opt/restic-cli/helper/init"
 
 main () {
     if [ "$1" = "init-repo" ]; then
