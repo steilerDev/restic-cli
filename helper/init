@@ -167,9 +167,10 @@ init () {
         fi
     done
 
-    read -p "Do you want to install restic-cli to your PATH (/bin/restic) (y/n): " -n 1 -r
+    read -p "Do you want to install restic-cli to your PATH (/bin/restic-cli) (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
+        ln -s ${SCRIPT} /bin/restic-cli
     fi
 
     read -p "Do you want to show your current backup status during login? (y/n): " -n 1 -r
