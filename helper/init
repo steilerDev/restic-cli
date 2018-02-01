@@ -1,0 +1,272 @@
+#!/bin/bash
+
+# All initial and backup configuration is done here
+
+init () {
+    echo "###################################################"
+    echo "# Welcome to restic-cli                           #"
+    echo "# Wrapping Alexander Neumann's restic since 2017  #"
+    echo "# Made with <3 by steilerDev                      #"
+    echo "###################################################"
+    echo
+
+    # Creating restic.conf
+    SCRIPT=$(realpath -s $0)
+    SCRIPTPATH=$(dirname $SCRIPT)
+    CONF=${SCRIPTPATH}/conf/restic.conf
+
+    if [ "$SCRIPTPATH" != "/opt/restic-cli" ]; then
+        echo "The script path differs from the recommended directory (/opt/restic-cli). Please move the folder, or adjust the first line of this script, in order to reference the correct configuration path (it now is $SCRIPTPATH)"
+    fi
+
+    if [ -e "$CONF" ]; then
+        echo "Warning! A configuration file for restic-cli already exists ($CONF), please rename the file NOW, or it will be overwritten."
+        read -p "Are you sure you want to continue? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            > $CONF
+        else
+            exit
+        fi
+    fi
+
+    echo "# General configurations" >> $CONF
+    echo "DIR=\"${SCRIPTPATH}\"" >> $CONF
+    echo "BIN_DIR=\"\${DIR}/bin\"" >> $CONF
+    echo "BIN_NAME=\"restic\"" >> $CONF
+    echo "BIN=\"\${BIN_DIR}/\${BIN_NAME}\"" >> $CONF
+    echo "VERSION=\"\${BIN_DIR}/VERSION\"" >> $CONF
+    echo "" >> $CONF
+
+    echo "# Backend configuration" >> $CONF
+    PS3='Please choose your backend for restic (see https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html for more information): '
+    options=("Local" "SFTP" "REST" "Amazon S3" "Minio Server" "OpenStack Swift" "Backblaze B2" "MS Azure Blob Storage" "Google Cloud Storage")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Local")
+                echo "Please enter your repository path (e.g.: /tmp/repo/):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                break
+                ;;
+            "SFTP")
+                echo "Please enter your remote repository path (e.g.: sftp:user@host:/tmp/backup):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                break
+                ;;
+            "REST")
+                echo "Please enter your remote repository path (e.g.: rest:https://host:8000/):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                break
+                ;;
+            "Amazon S3")
+                echo "Please enter your remote repository path (e.g.: s3:s3.amazonaws.com/bucket_name):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                echo "Please enter your access key:"
+                read ACCESS_KEY
+                echo "export AWS_ACCESS_KEY_ID=\"$ACCESS_KEY\"" >> $CONF
+                echo "Please enter your secret access key:"
+                read SECRET_ACCESS_KEY
+                echo "export AWS_SECRET_ACCESS_KEY=\"$SECRET_ACCESS_KEY\"" >> $CONF
+                break
+                ;;
+            "Minio Server")
+                echo "Please enter your remote repository path (e.g.: s3:http://localhost:9000/restic):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                echo "Please enter your access key:"
+                read ACCESS_KEY
+                echo "export AWS_ACCESS_KEY_ID=\"$ACCESS_KEY\"" >> $CONF
+                echo "Please enter your secret access key:"
+                read SECRET_ACCESS_KEY
+                echo "export AWS_SECRET_ACCESS_KEY=\"$SECRET_ACCESS_KEY\"" >> $CONF
+                break
+                ;;
+            "OpenStack Swift")
+                echo "Not implemented here yet"
+                ;;
+            "Backblaze B2")
+                echo "Please enter your remote repository path (e.g.: b2:bucketname:path/to/repo):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                echo "Please enter your account ID:"
+                read ACCOUNT_ID
+                echo "export B2_ACCOUNT_ID=\"$ACCOUNT_ID\"" >> $CONF
+                echo "Please enter your account key:"
+                read ACCOUNT_KEY
+                echo "export B2_ACCOUNT_KEY=\"$ACCOUNT_KEY\"" >> $CONF
+                break
+                ;;
+            "MS Azure Blob Storage")
+                echo "Please enter your remote repository path (e.g.: azure:foo:/):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                echo "Please enter your account name:"
+                read ACCOUNT_NAME
+                echo "export AZURE_ACCOUNT_NAME=\"$ACCOUNT_NAME\"" >> $CONF
+                echo "Please enter your account key:"
+                read ACCOUNT_KEY
+                echo "export AZURE_ACCOUNT_KEY=\"$ACCOUNT_KEY\"" >> $CONF
+                break
+                ;;
+            "Google Cloud Storage")
+                echo "Please check the permissions of the credentials, in order to use Google Cloud Storage with restic (https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html#google-cloud-storage)"
+                echo "Please enter your remote repository path (e.g.: gs:foo:/):"
+                read REPO_PATH
+                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
+                echo "Please enter your project ID:"
+                read PROJECT_ID 
+                echo "export GOOGLE_PROJECT_ID=\"$PROJECT_ID\"" >> $CONF
+                echo "Please enter the path of the service account key json file:"
+                read ACCOUNT_KEY
+                echo "export GOOGLE_APPLICATION_CREDENTIALS=\"$ACCOUNT_KEY\"" >> $CONF
+                break
+                ;;
+            *) echo "Invalid option!";;
+        esac
+    done 
+
+    echo "" >> $CONF
+
+    # Loading configuration
+    source $CONF
+    
+    # Installing binaries
+    echo "Now installing restic..."
+    update 
+
+    # Init repo and/or client
+    init-repo
+
+    read -p "Each client should get it's own access password to the repository, do you want to create a unique password for this client? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        init-client
+    fi
+
+    read -p "In order to automate the backup process you need to save the access password. Do you want to store the client's access password? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "Please enter the previously defined access password for this client, in order to store it"
+        read PSWD
+        echo "export RESTIC_PASSWORD=\"$PSWD\"" >> $CONF
+    fi
+    
+    # Configure backups
+    while true; do
+        read -p "Do you want to define a backup (you can add new backups using '$0 add-backup') (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            add-backup-config
+        else
+            break
+        fi
+    done
+
+    read -p "Do you want to install restic-cli to your PATH (/bin/restic) (y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    fi
+
+    read -p "Do you want to show your current backup status during login? (y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "if [ -e ${SCRIPTPATH}/helper/resticrc] ; then source ${SCRIPTPATH}/helper/resticrc; fi" >> ~/.bashrc
+    fi
+
+    echo "Finishing up..."
+    sudo ln -s $SCRIPT /bin/restic
+    sudo ln -s $SCRIPTPATH/helper/restic@.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+    for name in $SCRIPTPATH/conf/*; do
+        if [ -d $name ]; then
+            TIMER_FILE="$SCRIPTPATH/conf/$name/systemd.timer"
+            if [ -e $TIMER_FILE ]; then
+                echo -n "    Installing systemd timer for ${name}..."
+                sudo ln -s $TIMER_FILE /etc/systemd/system/multi-user.target.wants/restic@${name}.timer
+                sudo systemctl daemon-reload
+                sudo systemctl start restic@${name}.timer
+                echo "Done"
+                # systemctl list-timers
+            fi  
+        fi
+    done
+    # Install symlinks, resticrc, systemd, completion
+    echo "Done"
+}
+
+add-backup-config () {
+    CONF_DIR="$DIR/conf"
+    if [ ! -e "$CONF_DIR" ]; then
+        mkdir $CONF_DIR
+    fi
+    echo "Please enter the name of the new backup:"
+    read BACKUP_NAME
+    if [ -d "$CONF_DIR/$BACKUP_NAME" ]; then
+        read -p "A configuration with this name already exists, continue overwriting it? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -r $CONF_DIR/$BACKUP_NAME
+        else
+            echo "Aborting..."
+            return
+        fi
+    fi
+
+    mkdir $CONF_DIR/$BACKUP_NAME
+    echo "No backup run yet" > $CONF_DIR/$BACKUP_NAME/status
+
+    echo "Please enter the path you want to backup:"
+    read BACKUP_PATH
+    JSON="{\"name\": \"${BACKUP_NAME}\", \"path\": \"${BACKUP_PATH}\", \"excludes\": ["
+    while true ; do
+        echo "Please enter the paths that you want to be excluded, see https://restic.readthedocs.io/en/stable/040_backup.html for information on the capabilities (leave empty to stop):"
+        read EXCLUDE
+
+        if [ -z $EXCLUDE ] ; then
+            break
+        fi
+        JSON+="\"$EXCLUDE\","
+    done 
+    JSON=${JSON::-1}
+    JSON+="]}"
+    jq -n "$JSON" > $CONF_DIR/$BACKUP_NAME/conf
+
+    read -p "Do you want to create a systemd timer for this job?" -n 1 -r
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "Please specify the calendar timeframe (see man systemd.time for the OnCalendar systemd timers options)"
+        read TIMER
+        SYSTEMD="$CONF_DIR/$BACKUP_NAME/systemd.timer"
+        echo "# This file should be copied or linked to /etc/systemd/system/, in order to be activated & modified for each service" >> $SYSTEMD
+        echo "[Unit]" >> $SYSTEMD
+        echo "Description=Run the %i backup job using OnCalendar=${TIMER}" >> $SYSTEMD
+        echo >> $SYSTEMD
+        echo "[Timer]" >> $SYSTEMD
+        echo "OnCalendar=${TIMER}" >> $SYSTEMD
+        echo "Persistent=true" >> $SYSTEMD
+        echo "RandomizeDelaySec=1h" >> $SYSTEMD
+        echo "Unit=restic@i.service" >> $SYSTEMD
+        echo >> $SYSTEMD
+        echo "[Install]" >> $SYSTEMD
+        echo "WantedBy=multi-user.target" >> $SYSTEMD
+        sudo ln -s $SYSTEMD /etc/systemd/system/multi-user.target.wants/restic@${BACKUP_NAME}.timer
+    fi
+
+    echo "Successfully wrote configuration for $BACKUP_NAME"
+}
+
+init-repo () {
+    echo "Initializing repository..."
+    $BIN init
+    echo "...Done"
+}
+
+init-client () {
+    echo "Initializing client..."
+    $BIN key add
+    echo "...Done"
+}

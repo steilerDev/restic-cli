@@ -2,22 +2,24 @@
 
 #Requires jq 1.4 and bash 4.2
 
-RESTIC_CONF="/opt/restic-cli/restic.conf"
-
-if [ -e "$RESTIC_CONF" ]; then
-    source $RESTIC_CONF
-fi
+RESTIC_CONF="/opt/restic-cli/conf/restic.conf"
+RESTIC_INIT="/opt/helper/init"
 
 main () {
-
-    if [ "$1" = "update" ]; then
-        update
-    elif [ "$1" = "init-repo" ]; then
+    if [ "$1" = "init-repo" ]; then
+        # Can be found in $RESTIC_INIT
         init-repo
     elif [ "$1" = "init-client" ]; then
+        # Can be found in $RESTIC_INIT
         init-client
     elif [ "$1" = "init" ]; then
+        # Can be found in $RESTIC_INIT
         init
+    elif [ "$1" = "add-config" ]; then
+        # Can be found in $RESTIC_INIT
+        add-backup-config
+    elif [ "$1" = "update" ]; then
+        update
     elif [ "$1" = "command" ]; then
         shift
         $BIN $@
@@ -26,269 +28,10 @@ main () {
         verify
     elif ( [ "$1" = "backup" ] && [ "$#" -eq 2 ] ); then
         backup $2
-    elif [ "$1" = "add-config" ]; then
-        add-backup-config
     else
         about
     fi
 
-}
-
-init () {
-    echo "###################################################"
-    echo "# Welcome to restic-cli                           #"
-    echo "# Wrapping Alexander Neumann's restic since 2017  #"
-    echo "# Made with <3 by steilerDev                      #"
-    echo "###################################################"
-    echo
-
-    # Creating restic.conf
-    SCRIPT=$(realpath -s $0)
-    SCRIPTPATH=$(dirname $SCRIPT)
-    CONF=${SCRIPTPATH}/restic.conf
-
-    if [ "$SCRIPTPATH" != "/opt/restic-cli" ]; then
-        echo "The script path differs from the recommended directory (/opt/restic-cli). Please move the folder, or adjust the first line of this script, in order to reference the correct configuration path (it now is $SCRIPTPATH)"
-    fi
-
-
-    if [ -e "$CONF" ]; then
-        echo "Warning! A configuration file for restic-cli already exists ($CONF), please rename the file NOW, or it will be overwritten."
-        read -p "Are you sure you want to continue? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            > $CONF
-        else
-            exit
-        fi
-    fi
-
-    echo "# General configurations" >> $CONF
-    echo "DIR=\"${SCRIPTPATH}\"" >> $CONF
-    echo "BIN_DIR=\"\${DIR}/bin\"" >> $CONF
-    echo "BIN_NAME=\"restic\"" >> $CONF
-    echo "BIN=\"\${BIN_DIR}/\${BIN_NAME}\"" >> $CONF
-    echo "VERSION=\"\${BIN_DIR}/VERSION\"" >> $CONF
-    echo "" >> $CONF
-
-    echo "# Backend configuration" >> $CONF
-    PS3='Please choose your backend for restic (see https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html for more information): '
-    options=("Local" "SFTP" "REST" "Amazon S3" "Minio Server" "OpenStack Swift" "Backblaze B2" "MS Azure Blob Storage" "Google Cloud Storage")
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "Local")
-                echo "Please enter your repository path (e.g.: /tmp/repo/):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                break
-                ;;
-            "SFTP")
-                echo "Please enter your remote repository path (e.g.: sftp:user@host:/tmp/backup):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                break
-                ;;
-            "REST")
-                echo "Please enter your remote repository path (e.g.: rest:https://host:8000/):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                break
-                ;;
-            "Amazon S3")
-                echo "Please enter your remote repository path (e.g.: s3:s3.amazonaws.com/bucket_name):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                echo "Please enter your access key:"
-                read ACCESS_KEY
-                echo "export AWS_ACCESS_KEY_ID=\"$ACCESS_KEY\"" >> $CONF
-                echo "Please enter your secret access key:"
-                read SECRET_ACCESS_KEY
-                echo "export AWS_SECRET_ACCESS_KEY=\"$SECRET_ACCESS_KEY\"" >> $CONF
-                break
-                ;;
-            "Minio Server")
-                echo "Please enter your remote repository path (e.g.: s3:http://localhost:9000/restic):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                echo "Please enter your access key:"
-                read ACCESS_KEY
-                echo "export AWS_ACCESS_KEY_ID=\"$ACCESS_KEY\"" >> $CONF
-                echo "Please enter your secret access key:"
-                read SECRET_ACCESS_KEY
-                echo "export AWS_SECRET_ACCESS_KEY=\"$SECRET_ACCESS_KEY\"" >> $CONF
-                break
-                ;;
-            "OpenStack Swift")
-                echo "Not implemented here yet"
-                ;;
-            "Backblaze B2")
-                echo "Please enter your remote repository path (e.g.: b2:bucketname:path/to/repo):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                echo "Please enter your account ID:"
-                read ACCOUNT_ID
-                echo "export B2_ACCOUNT_ID=\"$ACCOUNT_ID\"" >> $CONF
-                echo "Please enter your account key:"
-                read ACCOUNT_KEY
-                echo "export B2_ACCOUNT_KEY=\"$ACCOUNT_KEY\"" >> $CONF
-                break
-                ;;
-            "MS Azure Blob Storage")
-                echo "Please enter your remote repository path (e.g.: azure:foo:/):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                echo "Please enter your account name:"
-                read ACCOUNT_NAME
-                echo "export AZURE_ACCOUNT_NAME=\"$ACCOUNT_NAME\"" >> $CONF
-                echo "Please enter your account key:"
-                read ACCOUNT_KEY
-                echo "export AZURE_ACCOUNT_KEY=\"$ACCOUNT_KEY\"" >> $CONF
-                break
-                ;;
-            "Google Cloud Storage")
-                echo "Please check the permissions of the credentials, in order to use Google Cloud Storage with restic (https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html#google-cloud-storage)"
-                echo "Please enter your remote repository path (e.g.: gs:foo:/):"
-                read REPO_PATH
-                echo "export RESTIC_REPOSITORY=\"${REPO_PATH}\"" >> $CONF
-                echo "Please enter your project ID:"
-                read PROJECT_ID 
-                echo "export GOOGLE_PROJECT_ID=\"$PROJECT_ID\"" >> $CONF
-                echo "Please enter the path of the service account key json file:"
-                read ACCOUNT_KEY
-                echo "export GOOGLE_APPLICATION_CREDENTIALS=\"$ACCOUNT_KEY\"" >> $CONF
-                break
-                ;;
-            *) echo "Invalid option!";;
-        esac
-    done 
-
-    echo "" >> $CONF
-
-    # Loading configuration
-    source $CONF
-    
-    # Installing binaries
-    echo "Now installing restic..."
-    update 
-
-    # Init repo and/or client
-    init-repo
-
-    read -p "Each client should get it's own access password to the repository, do you want to create a unique password for this client? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        init-client
-    fi
-
-    read -p "In order to automate the backup process you need to save the access password. Do you want to store the client's access password? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Please enter the previously defined access password for this client, in order to store it"
-        read PSWD
-        echo "export RESTIC_PASSWORD=\"$PSWD\"" >> $CONF
-    fi
-    
-    # Configure backups
-    while true; do
-        read -p "Do you want to define a backup (you can add new backups using '$0 add-backup') (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            add-backup-config
-        else
-            break
-        fi
-    done
-}
-
-add-backup-config () {
-    CONF_DIR="$DIR/conf"
-    if [ ! -e "$CONF_DIR" ]; then
-        mkdir $CONF_DIR
-    fi
-    echo "Please enter the name of the new backup:"
-    read BACKUP_NAME
-    if [ -d "$CONF_DIR/$BACKUP_NAME" ]; then
-        read -p "A configuration with this name already exists, continue overwriting it? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -r $CONF_DIR/$BACKUP_NAME
-        else
-            echo "Aborting..."
-            return
-        fi
-    fi
-
-    mkdir $CONF_DIR/$BACKUP_NAME
-    echo "No backup run yet" > $CONF_DIR/$BACKUP_NAME/status
-
-    echo "Please enter the path you want to backup:"
-    read BACKUP_PATH
-    JSON="{\"name\": \"${BACKUP_NAME}\", \"path\": \"${BACKUP_PATH}\", \"excludes\": ["
-    while true ; do
-        echo "Please enter the paths that you want to be excluded, see https://restic.readthedocs.io/en/stable/040_backup.html for information on the capabilities (leave empty to stop):"
-        read EXCLUDE
-
-        if [ -z $EXCLUDE ] ; then
-            break
-        fi
-        JSON+="\"$EXCLUDE\","
-    done 
-    JSON=${JSON::-1}
-    JSON+="]}"
-    jq -n "$JSON" > $CONF_DIR/$BACKUP_NAME/conf
-    echo "Successfully wrote configuration for $BACKUP_NAME"
-}
-
-init-repo () {
-    echo "Initializing repository..."
-    $BIN init
-    echo "...Done"
-}
-
-init-client () {
-    echo "Initializing client..."
-    $BIN key add
-    echo "...Done"
-}
-
-update () {
-    echo -n "Checking for restic updates..."
-    ARCHITECTURE="linux_amd64"
-
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/restic/restic/releases | grep -E "^    \"name\":" | grep -v "rc" | grep -ohE "[0-9]\.([0-9][\.]?)+" | head -n 1)
-
-    if [ -e "$VERSION" ]; then
-        CURRENT_VERSION=$(cat $VERSION)
-        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
-            echo "current version ($CURRENT_VERSION) is already latest version ($LATEST_VERSION)"
-            return
-        fi
-    fi
-
-    echo -n "found new version ($LATEST_VERSION), installing..."
-    RESTIC_URL="$(curl -s https://api.github.com/repos/restic/restic/releases | grep "browser_download_url" | grep "linux_amd64" | head -n 1 | cut -d '"' -f 4)"
-
-    # Moving old installation out of the way
-    if [ -d "$BIN_DIR" ] ; then
-        if [ -e "${BIN_DIR}/${BIN_NAME}" ]; then
-            mv "${BIN_DIR}/${BIN_NAME}" "${BIN_DIR}/${BIN_NAME}.old"
-        fi
-    else
-        mkdir "$BIN_DIR"
-    fi
-
-    # Getting latest version
-    wget $RESTIC_URL -O "${BIN_DIR}/${BIN_NAME}.bz2" > /dev/null 2>&1
-    bzip2 -cd "${BIN_DIR}/${BIN_NAME}.bz2" > "${BIN_DIR}/${BIN_NAME}"
-    rm "${BIN_DIR}/${BIN_NAME}.bz2"
-    echo "$LATEST_VERSION" > $VERSION
-    chmod +x "${BIN_DIR}/${BIN_NAME}"
-    echo "Done"
-}
-
-about () {
-    echo "No argument specified"
 }
 
 # Choses the right backup config and starts it
@@ -368,10 +111,60 @@ backup () {
     exit $success
 }
 
+
+update () {
+    echo -n "Checking for restic updates..."
+    ARCHITECTURE="linux_amd64"
+
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/restic/restic/releases | grep -E "^    \"name\":" | grep -v "rc" | grep -ohE "[0-9]\.([0-9][\.]?)+" | head -n 1)
+
+    if [ -e "$VERSION" ]; then
+        CURRENT_VERSION=$(cat $VERSION)
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+            echo "current version ($CURRENT_VERSION) is already latest version ($LATEST_VERSION)"
+            return
+        fi
+    fi
+
+    echo -n "found new version ($LATEST_VERSION), installing..."
+    RESTIC_URL="$(curl -s https://api.github.com/repos/restic/restic/releases | grep "browser_download_url" | grep "linux_amd64" | head -n 1 | cut -d '"' -f 4)"
+
+    # Moving old installation out of the way
+    if [ -d "$BIN_DIR" ] ; then
+        if [ -e "${BIN_DIR}/${BIN_NAME}" ]; then
+            mv "${BIN_DIR}/${BIN_NAME}" "${BIN_DIR}/${BIN_NAME}.old"
+        fi
+    else
+        mkdir "$BIN_DIR"
+    fi
+
+    # Getting latest version
+    wget $RESTIC_URL -O "${BIN_DIR}/${BIN_NAME}.bz2" > /dev/null 2>&1
+    bzip2 -cd "${BIN_DIR}/${BIN_NAME}.bz2" > "${BIN_DIR}/${BIN_NAME}"
+    rm "${BIN_DIR}/${BIN_NAME}.bz2"
+    echo "$LATEST_VERSION" > $VERSION
+    chmod +x "${BIN_DIR}/${BIN_NAME}"
+    echo "Done"
+}
+
 verify () {
     echo "Verifying repository..."
     $BIN check
     echo "Done, exit code was $?"
 }
+
+about () {
+    echo "No argument specified"
+}
+
+if [ -e "$RESTIC_CONF" ]; then
+    source $RESTIC_CONF
+fi
+
+if [ -e "$RESTIC_INIT" ]; then
+    source $RESTIC_INIT
+else
+    echo "Could not find ${RESTIC_INIT}!!"
+fi
 
 main $@
