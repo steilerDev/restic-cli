@@ -1,0 +1,48 @@
+source /opt/restic-cli/conf/restic.conf
+# Completion for duplicati
+# restic init
+# restic init-repo
+# restic init-client
+# restic add-config
+# restic update
+# restic command <restic cli command>
+# restic verify
+# restic backup <backup name>
+
+_restic-cli() 
+{
+    COMPREPLY=()
+    # The current restic script only takes 3 arguments that will be auto completed
+    if [ "${#COMP_WORDS[*]}" -lt 5 ] ; then
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        # The modifier is always the second argument
+        mod="${COMP_WORDS[1]}"
+        # The backup name is always the third argument
+        backup="${COMP_WORDS[2]}"
+   
+        # The first argument is one of the modifiers 
+        if [ "${#COMP_WORDS[*]}" = "2" ] ; then
+            opts="init init-repo init-client add-config update command verify backup"
+        # the second argument is a backup name (in case the modifiers requires it)
+        elif ( [ "${#COMP_WORDS[*]}" -gt 2 ] && [ "${mod}" = "backup" ]; then
+            opts=""
+
+            if [ "${#COMP_WORDS[*]}" = "3" ] ; then
+                # Read the available backup names
+                for name in $DIR/conf/*; do
+                    if [ -d $name ]; then
+                        opts="${opts} ${name}"
+                    fi
+                done
+            elif ( [ "${#COMP_WORDS[*]}" = "4" ] ; then
+                opts="quiet"
+            fi
+        else
+            opts=""
+        fi
+        
+        # Show fitting options
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+    fi
+}
+complete -F _restic-cli restic-cli
