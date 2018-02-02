@@ -32,7 +32,7 @@ deinit () {
             done
         fi
         echo "Removing acutal installation..."
-        rm -r $DIR
+        rm -rf $DIR
         echo "All done, thanks for using restic-cli!" 
     fi
 }
