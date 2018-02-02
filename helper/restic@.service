@@ -4,4 +4,4 @@ Description=Restic Backup Service for %i
 [Service]
 Type=simple
 User=root
-ExecStart=/bin/restic backup %i
+ExecStart=/bin/restic-cli backup %i

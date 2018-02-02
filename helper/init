@@ -195,7 +195,7 @@ init () {
     fi
 
     echo "Finishing up..."
-    sudo ln -s $SCRIPT /bin/restic
+    sudo ln -s $SCRIPT /bin/restic-cli
     sudo ln -s $SCRIPTPATH/helper/restic@.service /etc/systemd/system/
     sudo systemctl daemon-reload
     for name in $SCRIPTPATH/conf/*; do
