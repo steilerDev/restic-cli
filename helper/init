@@ -200,9 +200,10 @@ init () {
     sudo systemctl daemon-reload
     for name in $SCRIPTPATH/conf/*; do
         if [ -d $name ]; then
-            TIMER_FILE="$SCRIPTPATH/conf/$name/restic-${name}.timer"
+            BASENAME=$(basename $DIR)
+            TIMER_FILE="$SCRIPTPATH/conf/$BASENAME/restic-${BASENAME}.timer"
             if [ -e $TIMER_FILE ]; then
-                echo -n "    Installing systemd timer for ${name}..."
+                echo -n "    Installing systemd timer for ${BASENAME}..."
                 sudo systemctl enable $TIMER_FILE
                 echo "Done"
                 # systemctl list-timers
