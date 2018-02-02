@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# The removal of restic is done here
+
+BASHRC_STRING="if [ -e ${DIR}/helper/resticrc] ; then source ${DIR}/helper/resticrc; fi"
+
+deinit () {
+    echo "Are you sure you want to remove all local files related to restic (your remote backups and key configurations will NOT be affected)"
+    read -p "Are you sure you want to continue? (y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [ -e /bin/restic-cli ]; then
+            echo "Removing symlink /bin/restic-cli..."
+            sudo rm -f /bin/restic-cli
+        fi
+        if grep -Fxq "$BASHRC_STRING" ~/.bashrc; then
+            echo "Removing login screen..."
+            sed -i "/$BASHRC_STRING/d" ~/.bashrc
+        fi
+        if [ -e /etc/bash_completion.d/restic_completion ]; then
+            echo "Removing auto-completion..."
+            sudo rm -f /etc/bash_completion.d/restic_completion
+        fi
+        if [ -e /etc/systemd/system/restic@.service ]; then
+            echo "Removing systemd unit file and timers..."
+            sudo rm -f /etc/systemd/system/restic@.service
+            for name in $SCRIPTPATH/conf/*; do
+                if [ -d $name ]; then
+                    "    Removing systemd timer for ${name}..."
+                    sudo systemctl disable restic-${name}.timer
+                fi
+            done
+        fi
+        echo "Removing acutal installation..."
+        rm -r $DIR
+        echo "All done, thanks for using restic-cli!" 
+    fi
+}

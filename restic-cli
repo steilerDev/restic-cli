@@ -4,20 +4,24 @@
 
 RESTIC_CONF="/opt/restic-cli/conf/restic.conf"
 RESTIC_INIT="/opt/restic-cli/helper/init"
+RESTIC_DEINIT="/opt/restic-cli/helper/deinit"
 
 main () {
     if [ "$1" = "init-repo" ]; then
         # Can be found in $RESTIC_INIT
-        init-repo
+        _init-repo
     elif [ "$1" = "init-client" ]; then
         # Can be found in $RESTIC_INIT
-        init-client
+        _init-client
     elif [ "$1" = "init" ]; then
         # Can be found in $RESTIC_INIT
-        init
+        _init
     elif [ "$1" = "add-config" ]; then
         # Can be found in $RESTIC_INIT
-        add-backup-config
+        _add-backup-config
+    elif [ "$1" = "deinit" ]; then
+        # Can be found in RESTIC_DEINIT
+        _deinit
     elif [ "$1" = "update" ]; then
         update
     elif [ "$1" = "command" ]; then
@@ -162,10 +166,51 @@ if [ -e "$RESTIC_CONF" ]; then
     source $RESTIC_CONF
 fi
 
-if [ -e "$RESTIC_INIT" ]; then
-    source $RESTIC_INIT
-else
-    echo "Could not find ${RESTIC_INIT}!!"
-fi
 
+_init-repo () {
+    if [ -e "$RESTIC_INIT" ]; then
+        source $RESTIC_INIT
+    else
+        echo "Could not find ${RESTIC_INIT}!!"
+    fi
+    init-repo
+}
+
+_load-init () {
+    if [ -e "$RESTIC_INIT" ]; then
+        source $RESTIC_INIT
+    else
+        echo "Could not find ${RESTIC_INIT}!!"
+        exit
+    fi
+}
+
+_load-deinit () {
+    if [ -e "$RESTIC_DEINIT" ]; then
+        source $RESTIC_DEINIT
+    else
+        echo "Could not find ${RESTIC_DEINIT}!!"
+        exit
+    fi
+}
+
+_init-client () {
+    _load-init
+    init-client
+}
+
+_init () {
+    _load-init
+    init
+}
+
+_add-backup-config () {
+    _load-init
+    add-backup-config
+}
+
+_deinit () {
+    _load-deinit
+    deinit
+}
 main $@

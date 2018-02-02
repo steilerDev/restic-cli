@@ -22,7 +22,7 @@ _restic-cli()
    
         # The first argument is one of the modifiers 
         if [ "${#COMP_WORDS[*]}" = "2" ] ; then
-            opts="init init-repo init-client add-config update command verify backup"
+            opts="deinit init init-repo init-client add-config update command verify backup"
         # the second argument is a backup name (in case the modifiers requires it)
         elif ( [ "${#COMP_WORDS[*]}" -gt 2 ] && [ "${mod}" = "backup" ]; then
             opts=""

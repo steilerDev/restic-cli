@@ -9,6 +9,9 @@ init () {
     echo "# Made with <3 by steilerDev                      #"
     echo "###################################################"
     echo
+    echo "Please authenticate as sudo, or some parts will fail..."
+    sudo -v
+    echo "Done"
 
     # Creating restic.conf
     SCRIPT=$(realpath -s $0)
@@ -156,7 +159,8 @@ init () {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "Please enter the previously defined access password for this client, in order to store it:"
-        read PSWD
+        read -s PSWD
+        echo
         echo "export RESTIC_PASSWORD=\"$PSWD\"" >> $CONF
     fi
     
@@ -170,12 +174,6 @@ init () {
             break
         fi
     done
-
-    read -p "Do you want to install restic-cli to your PATH (/bin/restic-cli) (y/n): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        ln -s ${SCRIPT} /bin/restic-cli
-    fi
 
     read -p "Do you want to show your current backup status during login? (y/n): " -n 1 -r
     echo
@@ -212,6 +210,7 @@ init () {
         fi
     done
     echo "Done"
+    echo "Enjoy, keep your systems safe and send feedback to frank@steilerdev.de or https://github.com/steilerDev/restic-cli"
 }
 
 add-backup-config () {
