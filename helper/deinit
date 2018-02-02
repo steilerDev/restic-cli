@@ -27,10 +27,11 @@ deinit () {
         if [ -e /etc/systemd/system/restic@.service ]; then
             echo "Removing systemd unit file and timers..."
             sudo rm -f /etc/systemd/system/restic@.service
-            for name in $SCRIPTPATH/conf/*; do
+            for name in $DIR/conf/*; do
                 if [ -d $name ]; then
-                    "    Removing systemd timer for ${name}..."
-                    sudo systemctl disable restic-${name}.timer
+                    BASENAME=$(basename $name)
+                    "    Removing systemd timer for ${BASENAME}..."
+                    sudo systemctl disable restic-${BASENAME}.timer
                 fi
             done
         fi
