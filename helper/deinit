@@ -5,6 +5,9 @@
 BASHRC_STRING="if [ -e ${DIR}/helper/resticrc] ; then source ${DIR}/helper/resticrc; fi"
 
 deinit () {
+    echo "Please authenticate as sudo, or this will not work..."
+    sudo -v
+    echo "Done"
     echo "Are you sure you want to remove all local files related to restic (your remote backups and key configurations will NOT be affected)"
     read -p "Are you sure you want to continue? (y/n): " -n 1 -r
     echo
@@ -32,7 +35,7 @@ deinit () {
             done
         fi
         echo "Removing acutal installation..."
-        rm -rf $DIR
+        sudo rm -rf $DIR
         echo "All done, thanks for using restic-cli!" 
     fi
 }
