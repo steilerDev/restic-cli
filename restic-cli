@@ -88,6 +88,7 @@ backup () {
     # For debugging purposes
 
     echo $$ > ${THIS_PID}
+    chmod 777 ${THIS_PID}
 
     echo "$(date): Starting restic with '${BIN} backup $BACKUP_PATH ${EXCLUDE_OPTIONS}" >> $LOG_PATH
     if [ "$2" = "quiet" ]; then

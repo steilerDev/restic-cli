@@ -19,9 +19,13 @@ init () {
         echo "The script path differs from the recommended directory (/opt/restic-cli). Please move the folder, or adjust the first line of this script, in order to reference the correct configuration path (it now is $SCRIPTPATH)"
     fi
 
+    if [ ! -d $SCRIPTPATH/conf ]; then
+        mkdir $SCRIPTPATH/conf
+    fi
+
     if [ -e "$CONF" ]; then
         echo "Warning! A configuration file for restic-cli already exists ($CONF), please rename the file NOW, or it will be overwritten."
-        read -p "Are you sure you want to continue? (y/n) " -n 1 -r
+        read -p "Are you sure you want to continue? (y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             > $CONF
@@ -142,16 +146,16 @@ init () {
     # Init repo and/or client
     init-repo
 
-    read -p "Each client should get it's own access password to the repository, do you want to create a unique password for this client? (y/n) " -n 1 -r
+    read -p "Each client should get it's own access password to the repository, do you want to create a unique password for this client? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         init-client
     fi
 
-    read -p "In order to automate the backup process you need to save the access password. Do you want to store the client's access password? (y/n) " -n 1 -r
+    read -p "In order to automate the backup process you need to save the access password. Do you want to store the client's access password? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Please enter the previously defined access password for this client, in order to store it"
+        echo "Please enter the previously defined access password for this client, in order to store it:"
         read PSWD
         echo "export RESTIC_PASSWORD=\"$PSWD\"" >> $CONF
     fi
@@ -179,24 +183,34 @@ init () {
         echo "if [ -e ${SCRIPTPATH}/helper/resticrc] ; then source ${SCRIPTPATH}/helper/resticrc; fi" >> ~/.bashrc
     fi
 
+    read -p  "Do you want to enable <tab> auto completion for the restic-cli command? (y/n): " -n 1 -r
+    echo
+    if ! dpkg -s bash-completion > /dev/null 2>&1 ; then
+        echo "    bash-completion does not seem to be installed on this system"
+    else
+        if [ -d /etc/bash_completion.d/ ] ; then
+           sudo ln -s ${SCRIPTPATH}/helper/completion /etc/bash_completion.d/restic_completion
+           echo "    Please make sure you have bash_completion activated in your '/etc/bash.bashrc' or '~/.bashrc' (you need the line '. /etc/bash_completion' in at least on of these files"
+        else
+           echo "    Unable to link file, '/etc/bash_completion.d' does not exist"
+        fi
+    fi
+
     echo "Finishing up..."
     sudo ln -s $SCRIPT /bin/restic
     sudo ln -s $SCRIPTPATH/helper/restic@.service /etc/systemd/system/
     sudo systemctl daemon-reload
     for name in $SCRIPTPATH/conf/*; do
         if [ -d $name ]; then
-            TIMER_FILE="$SCRIPTPATH/conf/$name/systemd.timer"
+            TIMER_FILE="$SCRIPTPATH/conf/$name/restic-${name}.timer"
             if [ -e $TIMER_FILE ]; then
                 echo -n "    Installing systemd timer for ${name}..."
-                sudo ln -s $TIMER_FILE /etc/systemd/system/multi-user.target.wants/restic@${name}.timer
-                sudo systemctl daemon-reload
-                sudo systemctl start restic@${name}.timer
+                sudo systemctl enable $TIMER_FILE
                 echo "Done"
                 # systemctl list-timers
             fi  
         fi
     done
-    # Install symlinks, resticrc, systemd, completion
     echo "Done"
 }
 
@@ -237,24 +251,23 @@ add-backup-config () {
     JSON+="]}"
     jq -n "$JSON" > $CONF_DIR/$BACKUP_NAME/conf
 
-    read -p "Do you want to create a systemd timer for this job?" -n 1 -r
+    read -p "Do you want to create a systemd timer for this job? (y/n): " -n 1 -r
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Please specify the calendar timeframe (see man systemd.time for the OnCalendar systemd timers options)"
+        echo "Please specify the calendar timeframe (see man systemd.time for the OnCalendar systemd timers options):"
         read TIMER
-        SYSTEMD="$CONF_DIR/$BACKUP_NAME/systemd.timer"
+        SYSTEMD="$CONF_DIR/$BACKUP_NAME/restic-${BACKUP_NAME}.timer"
         echo "# This file should be copied or linked to /etc/systemd/system/, in order to be activated & modified for each service" >> $SYSTEMD
         echo "[Unit]" >> $SYSTEMD
-        echo "Description=Run the %i backup job using OnCalendar=${TIMER}" >> $SYSTEMD
+        echo "Description=Run the $BACKUP_NAME backup job using OnCalendar=${TIMER}" >> $SYSTEMD
         echo >> $SYSTEMD
         echo "[Timer]" >> $SYSTEMD
         echo "OnCalendar=${TIMER}" >> $SYSTEMD
         echo "Persistent=true" >> $SYSTEMD
         echo "RandomizeDelaySec=1h" >> $SYSTEMD
-        echo "Unit=restic@i.service" >> $SYSTEMD
+        echo "Unit=restic@${BACKUP_NAME}.service" >> $SYSTEMD
         echo >> $SYSTEMD
         echo "[Install]" >> $SYSTEMD
         echo "WantedBy=multi-user.target" >> $SYSTEMD
-        sudo ln -s $SYSTEMD /etc/systemd/system/multi-user.target.wants/restic@${BACKUP_NAME}.timer
     fi
 
     echo "Successfully wrote configuration for $BACKUP_NAME"
