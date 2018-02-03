@@ -43,6 +43,7 @@ init () {
     echo "BIN_NAME=\"restic\"" >> $CONF
     echo "BIN=\"\${BIN_DIR}/\${BIN_NAME}\"" >> $CONF
     echo "VERSION=\"\${BIN_DIR}/VERSION\"" >> $CONF
+    echo "#SKIPUPDATECHECK=true" >> $CONF
     echo "" >> $CONF
 
     echo "# Backend configuration" >> $CONF

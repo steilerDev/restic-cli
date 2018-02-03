@@ -7,6 +7,9 @@ RESTIC_INIT="/opt/restic-cli/helper/init"
 RESTIC_DEINIT="/opt/restic-cli/helper/deinit"
 
 main () {
+    if [ ! $SKIPUPDATECHECK ] && [ "$1" != "update" ] ; then
+        update-available
+    fi
     if [ "$1" = "init-repo" ]; then
         # Can be found in $RESTIC_INIT
         _init-repo
@@ -118,20 +121,11 @@ backup () {
 
 
 update () {
-    echo -n "Checking for restic updates..."
-    ARCHITECTURE="linux_amd64"
-
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/restic/restic/releases | grep -E "^    \"name\":" | grep -v "rc" | grep -ohE "[0-9]\.([0-9][\.]?)+" | head -n 1)
-
-    if [ -e "$VERSION" ]; then
-        CURRENT_VERSION=$(cat $VERSION)
-        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
-            echo "current version ($CURRENT_VERSION) is already latest version ($LATEST_VERSION)"
-            return
-        fi
+    if ! update-available; then
+        return
     fi
+    echo "Installing new version ($LATEST_VERSION)..."
 
-    echo -n "found new version ($LATEST_VERSION), installing..."
     RESTIC_URL="$(curl -s https://api.github.com/repos/restic/restic/releases | grep "browser_download_url" | grep "linux_amd64" | head -n 1 | cut -d '"' -f 4)"
 
     # Moving old installation out of the way
@@ -150,6 +144,23 @@ update () {
     echo "$LATEST_VERSION" > $VERSION
     chmod +x "${BIN_DIR}/${BIN_NAME}"
     echo "Done"
+}
+
+update-available () {
+    echo -n "Checking for restic updates..."
+    ARCHITECTURE="linux_amd64"
+
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/restic/restic/releases | grep -E "^    \"name\":" | grep -v "rc" | grep -ohE "[0-9]\.([0-9][\.]?)+" | head -n 1)
+
+    if [ -e "$VERSION" ]; then
+        CURRENT_VERSION=$(cat $VERSION)
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+            echo "current version ($CURRENT_VERSION) is already latest version ($LATEST_VERSION)!"
+            return 1
+        fi
+    fi
+    echo "found new version ($LATEST_VERSION)!"
+    return 0
 }
 
 verify () {
