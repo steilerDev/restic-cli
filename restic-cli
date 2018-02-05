@@ -18,10 +18,11 @@ main () {
         # Can be found in RESTIC_DEINIT
         _deinit
         return
-    elif 
+    else
         if [ ! $SKIPUPDATECHECK ]; then
         update-available
         fi
+
         if [ "$1" = "init-repo" ]; then
             # Can be found in $RESTIC_INIT
             _init-repo
