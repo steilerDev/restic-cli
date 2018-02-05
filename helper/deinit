@@ -32,6 +32,7 @@ deinit () {
                     BASENAME=$(basename $name)
                     "    Removing systemd timer for ${BASENAME}..."
                     sudo systemctl disable restic-${BASENAME}.timer
+                    sudo systemctl stop restic-${BASENAME}.timer
                 fi
             done
         fi
