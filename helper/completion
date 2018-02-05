@@ -31,7 +31,8 @@ _restic-cli()
                 # Read the available backup names
                 for name in $DIR/conf/*; do
                     if [ -d $name ]; then
-                        opts="${opts} ${name}"
+                        
+                        opts="${opts} $(basename $name)"
                     fi
                 done
             elif [ "${#COMP_WORDS[*]}" = "4" ] ; then
