@@ -7,38 +7,47 @@ RESTIC_INIT="/opt/restic-cli/helper/init"
 RESTIC_DEINIT="/opt/restic-cli/helper/deinit"
 
 main () {
-    if [ ! $SKIPUPDATECHECK ] && [ "$1" != "update" ] ; then
-        update-available
-    fi
-    if [ "$1" = "init-repo" ]; then
-        # Can be found in $RESTIC_INIT
-        _init-repo
-    elif [ "$1" = "init-client" ]; then
-        # Can be found in $RESTIC_INIT
-        _init-client
+    if [ "$1" = "update" ]; then
+        update
+        return
     elif [ "$1" = "init" ]; then
         # Can be found in $RESTIC_INIT
         _init
-    elif [ "$1" = "add-config" ]; then
-        # Can be found in $RESTIC_INIT
-        _add-backup-config
+        return
     elif [ "$1" = "deinit" ]; then
         # Can be found in RESTIC_DEINIT
         _deinit
-    elif [ "$1" = "update" ]; then
-        update
-    elif [ "$1" = "command" ]; then
-        shift
-        $BIN $@
-        echo "Exit code: $?"
-    elif [ "$1" = "verify" ]; then
-        verify
-    elif ( [ "$1" = "backup" ] && [ "$#" -eq 2 ] ); then
-        backup $2
-    else
-        about
+        return
+    elif 
+        if [ ! $SKIPUPDATECHECK ]; then
+        update-available
+        fi
+        if [ "$1" = "init-repo" ]; then
+            # Can be found in $RESTIC_INIT
+            _init-repo
+            return
+        elif [ "$1" = "init-client" ]; then
+            # Can be found in $RESTIC_INIT
+            _init-client
+            return
+        elif [ "$1" = "add-config" ]; then
+            # Can be found in $RESTIC_INIT
+            _add-backup-config
+            return
+        elif [ "$1" = "command" ]; then
+            shift
+            $BIN $@
+            echo "Exit code: $?"
+            return
+        elif [ "$1" = "verify" ]; then
+            verify
+            return
+        elif ( [ "$1" = "backup" ] && [ "$#" -eq 2 ] ); then
+            backup $2
+            return
+        fi
     fi
-
+    about
 }
 
 # Choses the right backup config and starts it
