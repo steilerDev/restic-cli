@@ -264,7 +264,6 @@ add-backup-config () {
         echo "[Timer]" >> $SYSTEMD
         echo "OnCalendar=${TIMER}" >> $SYSTEMD
         echo "Persistent=true" >> $SYSTEMD
-        echo "RandomizeDelaySec=1h" >> $SYSTEMD
         echo "Unit=restic@${BACKUP_NAME}.service" >> $SYSTEMD
         echo >> $SYSTEMD
         echo "[Install]" >> $SYSTEMD

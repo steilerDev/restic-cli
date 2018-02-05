@@ -24,7 +24,7 @@ _restic-cli()
         if [ "${#COMP_WORDS[*]}" = "2" ] ; then
             opts="deinit init init-repo init-client add-config update command verify backup"
         # the second argument is a backup name (in case the modifiers requires it)
-        elif ( [ "${#COMP_WORDS[*]}" -gt 2 ] && [ "${mod}" = "backup" ]; then
+        elif ( [ "${#COMP_WORDS[*]}" -gt 2 ] && [ "${mod}" = "backup" ] ); then
             opts=""
 
             if [ "${#COMP_WORDS[*]}" = "3" ] ; then
@@ -34,7 +34,7 @@ _restic-cli()
                         opts="${opts} ${name}"
                     fi
                 done
-            elif ( [ "${#COMP_WORDS[*]}" = "4" ] ; then
+            elif [ "${#COMP_WORDS[*]}" = "4" ] ; then
                 opts="quiet"
             fi
         else
