@@ -206,6 +206,7 @@ init () {
             if [ -e $TIMER_FILE ]; then
                 echo -n "    Installing systemd timer for ${BASENAME}..."
                 sudo systemctl enable $TIMER_FILE
+                sudo systemctl start restic-${BASENAME}.timer
                 echo "Done"
                 # systemctl list-timers
             fi  
