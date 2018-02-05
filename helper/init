@@ -254,6 +254,7 @@ add-backup-config () {
     jq -n "$JSON" > $CONF_DIR/$BACKUP_NAME/conf
 
     read -p "Do you want to create a systemd timer for this job? (y/n): " -n 1 -r
+    echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "Please specify the calendar timeframe (see man systemd.time for the OnCalendar systemd timers options):"
         read TIMER
