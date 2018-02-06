@@ -2,7 +2,7 @@
 
 # The removal of restic is done here
 
-BASHRC_STRING="if [ -e ${DIR}/helper/resticrc] ; then source ${DIR}/helper/resticrc; fi"
+BASHRC_STRING="if [ -e ${DIR}/helper/resticrc ] ; then source ${DIR}/helper/resticrc; fi"
 
 deinit () {
     echo "Please authenticate as sudo, or this will not work..."

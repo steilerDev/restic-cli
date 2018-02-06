@@ -179,7 +179,7 @@ init () {
     read -p "Do you want to show your current backup status during login? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "if [ -e ${SCRIPTPATH}/helper/resticrc] ; then source ${SCRIPTPATH}/helper/resticrc; fi" >> ~/.bashrc
+        echo "if [ -e ${SCRIPTPATH}/helper/resticrc ] ; then source ${SCRIPTPATH}/helper/resticrc; fi" >> ~/.bashrc
     fi
 
     read -p  "Do you want to enable <tab> auto completion for the restic-cli command? (y/n): " -n 1 -r
