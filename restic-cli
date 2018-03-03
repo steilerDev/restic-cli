@@ -7,7 +7,6 @@ RESTIC_INIT="/opt/restic-cli/helper/init"
 RESTIC_DEINIT="/opt/restic-cli/helper/deinit"
 
 main () {
-    echo "Started with $@"
     if [ "$1" = "update" ]; then
         update
         return
