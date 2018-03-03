@@ -7,6 +7,7 @@ RESTIC_INIT="/opt/restic-cli/helper/init"
 RESTIC_DEINIT="/opt/restic-cli/helper/deinit"
 
 main () {
+    echo "Started with $@"
     if [ "$1" = "update" ]; then
         update
         return
@@ -43,8 +44,8 @@ main () {
         elif [ "$1" = "verify" ]; then
             verify
             return
-        elif ( [ "$1" = "backup" ] && [ "$#" -eq 2 ] ); then
-            backup $2
+        elif ( [ "$1" = "backup" ] && [ "$#" -gt 2 ] ); then
+            backup $2 $3
             return
         fi
     fi
