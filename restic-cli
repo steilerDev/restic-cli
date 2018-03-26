@@ -43,9 +43,14 @@ main () {
         elif [ "$1" = "verify" ]; then
             verify
             return
-        elif ( [ "$1" = "backup" ] && [ "$#" -gt 2 ] ); then
-            backup $2 $3
-            return
+        elif [ "$1" = "backup" ]; then
+            if [ "$#" -eq "2" ]; then
+                backup $2
+                return
+            elif [ "$#" -eq "3" ]; then
+                backup $2 $3
+                return
+            fi
         fi
     fi
     about
@@ -83,7 +88,6 @@ backup () {
         fi
     fi
 
-
     ############################################################################
     # Setup logging mechanism 
     ############################################################################
@@ -92,7 +96,6 @@ backup () {
     ############################################################################
     # Build command based on config
     ############################################################################
-
     EXCLUDE_OPTIONS=$(
         cat "$DIR/conf/$1/conf" | jq .excludes[] | \
         while read -r EXCLUDE ; do
